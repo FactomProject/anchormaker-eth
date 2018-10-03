@@ -1,53 +1,56 @@
-Anchormaker
+Ethereum AnchorMaker
 =============
 
-Setup Instructions
+This version of AnchorMaker is a program that runs against factomd and geth nodes, listening to the Factom and Ethereum networks respecively, and submits rolling 1000 block windows of Directory Block anchors from the former into the latter. Once an anchor is confirmed as having been included in a block on Ethereum, an AnchorRecord will be submitted back to Factom as a "receipt" of sorts for the anchor --- this is what allows for factomd to return anchor related information in the "anchors-by-height" call.
+
+If a backlog of unanchored Directory Blocks exist, AnchorMaker will start by submitting an anchor for DBlock 999 or the current head DBlock found in factomd (whichever is lower). Then, it will proceed to work through any remaining 1000 block windows of backlogged Directory Blocks until it is all caught up.
+
+Instructions
 --------
 
-Download and install BitcoinCore - https://bitcoin.org/en/download .
+### Setting up the environment
+Make sure that your factomd node is up to date, currently running, and fully synced (instructions sold separately).
 
-Next, you will want to download anchormaker and copy the anchormaker.conf file to your .factom directory:
+**Note: Because this program will automatically write anchor records to the anchor chain [(Name: FactomEthereumAnchorChain, ChainID: 6e4540d08d5ac6a1a394e982fb6a2ab8b516ee751c37420055141b94fe070bfe)](http://explorer.factom.com/chain/6e4540d08d5ac6a1a394e982fb6a2ab8b516ee751c37420055141b94fe070bfe), it is recommended (pretty please) that you run AnchorMaker with a simulated Factom network or similar, rather than on the live main-net.**
 
+
+First, download the anchormaker-eth repo and copy the included anchormaker.conf file to your .factom directory:
 ```
-go get -v github.com/FactomProject/anchormaker/...
-cp $GOPATH/src/github.com/FactomProject/anchormaker/anchormaker.conf $HOME/.factom/anchormaker.conf
-```
-
-Finally, in order for anchormaker to be able to make entries into Factom, you must modify the $HOME/.factom/anchormaker.conf file and change the "ServerECKey" value from "e1" to a named entry credit address in your Factom wallet.
-
-
-Running Anchormaker
---------
-
-First, make sure that factomd is running.
-
-
-**Note: Because this program will automatically write anchor records to the anchor chain [df3ade9eec4b08d5379cc64270c30ea7315d8a8a1a69efe2b98a60ecdd69e604](http://explorer.factom.org/chain/df3ade9eec4b08d5379cc64270c30ea7315d8a8a1a69efe2b98a60ecdd69e604), it is recommended that you run this program on a Factom sandbox, rather than on the live mainnet.**  chain name: FactomAnchorChain
-
-Next, make sure that bitcoind is also running. 
-
-For testnet, run it with the `-testnet` flag.
-
-First and only the first time you are running bitcoind, make sure to run it with `-txindex=1 -rescan -reindex` flags to make sure we have access to raw transactions. You only need to run it once like this. Make sure bitcoind synchronizes fully with these flags.
-
-Make sure your bitcoin .conf file has the following data (for testnet):
-
-```
-testnet=1
-server=1
-rpcuser=user
-rpcpassword=pass
-rpcallowip=0.0.0.0/0
-rpcport=18332
+cd $GOPATH/src/github.com/FactomProject
+git clone git@github.com:FactomProject/anchormaker-eth.git
+cd anchormaker-eth
+cp anchormaker.conf $HOME/.factom/anchormaker.conf
 ```
 
-Create a Bitcoin address and put it in your configuration file. Make sure the address has a lot of unspent outputs, roughly 0.1BTC apiece should be good to start.
+Then install anchormaker from the repo's root directory with ```go install``` (or just do a ```go build``` to keep the binary contained to the repo folder)
 
-Once the address balance is non-zero, you are able to run anchormaker successfully. From the $HOME/github.com/FactomProject/anchormaker/ folder, you can run:
+Now you'll want to download and install the geth Ethereum client:
+- [Github repo](https://github.com/ethereum/go-ethereum)
+- [Installation instructions](https://github.com/ethereum/go-ethereum/wiki/Installation-Instructions-for-Ubuntu)
 
-```
-go build
-./anchormaker
-```
 
-create new EC addresses in hex and human format [here](https://github.com/FactomProject/Testing/blob/master/examples/python/createECaddress.py)?
+Next, let's get geth fully synced:
+
+- main-net:
+```geth --cache=4096 --verbosity 3 --rpc --rpcapi "personal,net,web3,eth" console 2>> ~/ethlogs/eth.log```
+
+- ropsten test-net:
+```geth --testnet --cache=4096 --verbosity 3 --rpc --rpcapi "personal,net,web3,eth" console 2>> ~/ethlogs/eth.log```
+
+Geth will run with ```--syncmode "fast"``` by default, which is essentially the concept of a "full" node in Ethereum. It will quickly sync the block headers up to 64 blocks before current head block, then begin processing all transactions and building up the state. This can still take a **really long** time, despite the name "fast". So for testing purposes, just running a light node will be sufficient. This will allow your node to sync very quickly and have little overhead. Simply add the following flag: ```--syncmode "light"```
+
+To check if your geth node is syncing, issue ```eth.syncing``` from within the geth console. A response of ```false``` means your node is fully synced and you are safe to proceed.
+
+Once fully synced, create an Ethereum address and put it in the anchormaker.conf file. Make sure the address has been funded, 1 ETH should be good enough to start. There are plenty of faucets for ropsten test-net ethers, such as https://faucet.ropsten.be/
+
+Once the address balance is non-zero, you will be able to move onto deployment of the FactomAnchor smart contract.
+
+### Deploying FactomAnchor Smart Contract
+
+
+
+### Running AnchorMaker
+
+Generate a new EC address (```factom-cli newecaddress``` should be sufficient assuming you have the tools), or use an existing one you have funded already. Then modify the $HOME/.factom/anchormaker.conf file and change the "ServerECKey" to the keys we just created.
+
+Run ```anchormaker``` or ```./anchormaker``` depending on whether you issued ```go install``` or ```go build``` previously.
