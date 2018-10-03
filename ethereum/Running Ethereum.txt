@@ -1,0 +1,15 @@
+Running Ethereum V2
+
+1) Download geth from https://geth.ethereum.org/downloads/
+
+
+
+Running Ethereum V1
+
+1) Download Ethereum wallet from https://github.com/ethereum/mist/releases
+2) Run wallet, skip peer search
+3) Develop->Network->TestNet
+4) Wait for network synchronization. In the meantime, generate an address, get some ETH from a testnet faucet - https://zerogox.com/ethereum/wei_faucet
+5) Close the main client
+6) Find Geth executable (\resources\node\geth\geth.exe)
+7) Run it with  --testnet --rpc --rpcapi "personal"
