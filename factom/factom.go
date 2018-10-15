@@ -131,11 +131,10 @@ func SynchronizeFactomData(dbo *database.AnchorDatabaseOverlay) (int, error) {
 				if err != nil {
 					return 0, err
 				}
-				ar, valid, err := anchor.UnmarshalAndValidateAnchorEntryAnyVersion(entry, AnchorSigPublicKeys)
-				if err != nil {
-					return 0, err
-				} else if !valid {
-					fmt.Printf("Invalid anchor - %v\n", entry)
+
+				ar, valid, _ := anchor.UnmarshalAndValidateAnchorEntryAnyVersion(entry, AnchorSigPublicKeys)
+				if !valid {
+					fmt.Printf("Invalid anchor: %v\n", entry)
 					continue
 				}
 
