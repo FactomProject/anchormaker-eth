@@ -3,8 +3,8 @@ package factom_test
 import (
 	"testing"
 
-	"github.com/FactomProject/anchormaker/config"
-	. "github.com/FactomProject/anchormaker/factom"
+	"github.com/FactomProject/anchormaker-eth/config"
+	. "github.com/FactomProject/anchormaker-eth/factom"
 	"github.com/FactomProject/factomd/anchor"
 )
 

@@ -2,23 +2,23 @@
 package ethereum
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"math/big"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/FactomProject/EthereumAPI"
-	"github.com/FactomProject/anchormaker/config"
-	"github.com/FactomProject/anchormaker/database"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/FactomProject/anchormaker-eth/api"
+	"github.com/FactomProject/anchormaker-eth/config"
+	"github.com/FactomProject/anchormaker-eth/database"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"math/big"
-	"net/http"
-	"io/ioutil"
-	"encoding/json"
-	"github.com/FactomProject/anchormaker/api"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 //https://ethereum.github.io/browser-solidity/#version=soljson-latest.js
@@ -164,7 +164,7 @@ func SynchronizeEthereumData(dbo *database.AnchorDatabaseOverlay) (int, error) {
 	}
 
 	// Update the block to start at for the next synchronization loop
-	if ps.LastEthereumBlockChecked < lastBlock + 1 {
+	if ps.LastEthereumBlockChecked < lastBlock+1 {
 		ps.LastEthereumBlockChecked = lastBlock + 1
 	}
 	err = dbo.InsertProgramState(ps)
@@ -202,7 +202,7 @@ func AnchorBlocksIntoEthereum(dbo *database.AnchorDatabaseOverlay) error {
 
 		// Determine if we should resubmit the transaction, and if so, at what height
 		// TODO: Come up with a better time to use than 4 minutes
-		if time.Now().Unix() - ps.PendingTx.TxTime > 240 {
+		if time.Now().Unix()-ps.PendingTx.TxTime > 240 {
 			fmt.Println("Anchor has been pending for over 4 minutes, resubmitting...")
 			height := ps.PendingTx.FactomDBheight
 			if !ps.PendingTx.IsMandatory && ps.PendingTx.FactomDBheight != ps.LastFactomDBlockHeightChecked {
@@ -239,14 +239,14 @@ func AnchorBlocksIntoEthereum(dbo *database.AnchorDatabaseOverlay) error {
 			// we'll need multiple txs to cover backlog, start with the first 1000 block window
 			height = WindowSize - 1
 		}
-	} else if ps.LastConfirmedAnchorDBlockHeight + WindowSize < ps.LastFactomDBlockHeightChecked {
+	} else if ps.LastConfirmedAnchorDBlockHeight+WindowSize < ps.LastFactomDBlockHeightChecked {
 		// We've anchored some of the backlog already, but still have more to go.
 		// Move to the next 1000 block window
 		height = ps.LastConfirmedAnchorDBlockHeight + WindowSize
 	} else {
 		// We've anchored some of the backlog already, but can now start to anchor at the most recent block
 		height = ps.LastFactomDBlockHeightChecked
-		if height < ps.LastConfirmedAnchorDBlockHeight + WindowSize {
+		if height < ps.LastConfirmedAnchorDBlockHeight+WindowSize {
 			isMandatory = false
 		}
 	}
@@ -299,7 +299,7 @@ func AnchorBlockWindowWithOptions(dbo *database.AnchorDatabaseOverlay, height ui
 		return nil, err
 	}
 	fmt.Println("Ethereum Tx submitted:")
-	fmt.Printf("----txHash: %v\n----nonce: %d\n----DBlocks: %d to %d\n", tx.Hash().String(), tx.Nonce(), height - WindowSize + 1, height)
+	fmt.Printf("----txHash: %v\n----nonce: %d\n----DBlocks: %d to %d\n", tx.Hash().String(), tx.Nonce(), height-WindowSize+1, height)
 
 	ad.MerkleRoot = merkleRoot.String()
 	ad.Ethereum.TxID = tx.Hash().String()
@@ -429,31 +429,31 @@ func CheckBalance() (int64, error) {
 // GasPriceEstimates holds multiple price estimates (in Wei) and their corresponding wait times (in minutes)
 type GasPriceEstimates struct {
 	BlockNumber uint64
-	BlockTime float64
-	Speed float64
-	SafeLow *big.Int
+	BlockTime   float64
+	Speed       float64
+	SafeLow     *big.Int
 	SafeLowWait float64
-	Average *big.Int
+	Average     *big.Int
 	AverageWait float64
-	Fast *big.Int
-	FastWait float64
-	Fastest *big.Int
+	Fast        *big.Int
+	FastWait    float64
+	Fastest     *big.Int
 	FastestWait float64
 }
 
 // GetGasPriceEstimates polls the ethgasstation API at the given URL and returns its most recent estimates
 func GetGasPriceEstimates(url string) (*GasPriceEstimates, error) {
 	type rawEstimate struct {
-		BlockNumber uint64 `json:"blockNum"`
-		BlockTime float64 `json:"block_time"`
-		Speed float64 `json:"speed"`
-		SafeLow float64 `json:"safeLow"`
+		BlockNumber uint64  `json:"blockNum"`
+		BlockTime   float64 `json:"block_time"`
+		Speed       float64 `json:"speed"`
+		SafeLow     float64 `json:"safeLow"`
 		SafeLowWait float64 `json:"safeLowWait"`
-		Average float64 `json:"average"`
+		Average     float64 `json:"average"`
 		AverageWait float64 `json:"avgWait"`
-		Fast float64 `json:"fast"`
-		FastWait float64 `json:"fastWait"`
-		Fastest float64 `json:"fastest"`
+		Fast        float64 `json:"fast"`
+		FastWait    float64 `json:"fastWait"`
+		Fastest     float64 `json:"fastest"`
 		FastestWait float64 `json:"fastestWait"`
 	}
 
@@ -483,15 +483,15 @@ func GetGasPriceEstimates(url string) (*GasPriceEstimates, error) {
 	// convert weird GWei * 10 units to wei, for usability
 	estimates := GasPriceEstimates{
 		BlockNumber: raw.BlockNumber,
-		BlockTime: raw.BlockTime,
-		Speed: raw.Speed,
-		SafeLow: big.NewInt(int64(raw.SafeLow * 1e8)),
+		BlockTime:   raw.BlockTime,
+		Speed:       raw.Speed,
+		SafeLow:     big.NewInt(int64(raw.SafeLow * 1e8)),
 		SafeLowWait: raw.SafeLowWait,
-		Average: big.NewInt(int64(raw.Average * 1e8)),
+		Average:     big.NewInt(int64(raw.Average * 1e8)),
 		AverageWait: raw.AverageWait,
-		Fast: big.NewInt(int64(raw.Fast * 1e8)),
-		FastWait: raw.FastWait,
-		Fastest: big.NewInt(int64(raw.Fastest * 1e8)),
+		Fast:        big.NewInt(int64(raw.Fast * 1e8)),
+		FastWait:    raw.FastWait,
+		Fastest:     big.NewInt(int64(raw.Fastest * 1e8)),
 		FastestWait: raw.FastestWait,
 	}
 	return &estimates, nil

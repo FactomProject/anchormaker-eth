@@ -6,8 +6,8 @@ import (
 
 	"github.com/FactomProject/factom"
 
-	"github.com/FactomProject/anchormaker/config"
-	anchorFactom "github.com/FactomProject/anchormaker/factom"
+	"github.com/FactomProject/anchormaker-eth/config"
+	anchorFactom "github.com/FactomProject/anchormaker-eth/factom"
 
 	"github.com/FactomProject/factomd/common/entryBlock"
 	"github.com/FactomProject/factomd/common/primitives"

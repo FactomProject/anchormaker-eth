@@ -6,12 +6,12 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/FactomProject/anchormaker/api"
-	"github.com/FactomProject/anchormaker/config"
-	"github.com/FactomProject/anchormaker/database"
-	"github.com/FactomProject/anchormaker/ethereum"
-	"github.com/FactomProject/anchormaker/factom"
-	"github.com/FactomProject/anchormaker/setup"
+	"github.com/FactomProject/anchormaker-eth/api"
+	"github.com/FactomProject/anchormaker-eth/config"
+	"github.com/FactomProject/anchormaker-eth/database"
+	"github.com/FactomProject/anchormaker-eth/ethereum"
+	"github.com/FactomProject/anchormaker-eth/factom"
+	"github.com/FactomProject/anchormaker-eth/setup"
 )
 
 func main() {

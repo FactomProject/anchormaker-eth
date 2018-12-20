@@ -3,7 +3,7 @@ package database_test
 import (
 	"testing"
 
-	. "github.com/FactomProject/anchormaker/database"
+	. "github.com/FactomProject/anchormaker-eth/database"
 )
 
 func TestAnchorData(t *testing.T) {

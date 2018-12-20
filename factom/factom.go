@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/FactomProject/anchormaker-eth/api"
+	"github.com/FactomProject/anchormaker-eth/config"
+	"github.com/FactomProject/anchormaker-eth/database"
 	"github.com/FactomProject/factom"
 	"github.com/FactomProject/factom/wallet"
 	"github.com/FactomProject/factom/wallet/wsapi"
-
-	"github.com/FactomProject/anchormaker/api"
-	"github.com/FactomProject/anchormaker/config"
-	"github.com/FactomProject/anchormaker/database"
-
 	"github.com/FactomProject/factomd/anchor"
 	"github.com/FactomProject/factomd/common/entryBlock"
 	"github.com/FactomProject/factomd/common/factoid"
