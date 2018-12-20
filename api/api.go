@@ -104,7 +104,7 @@ func GetMerkleRootOfDBlockWindow(height, size uint32) (interfaces.IHash, error) 
 		if err != nil {
 			return nil, err
 		}
-		dblockMR, err := primitives.NewShaHashFromStr(block.BodyKeyMR().String())
+		dblockMR, err := primitives.NewShaHashFromStr(block.GetKeyMR().String())
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +114,7 @@ func GetMerkleRootOfDBlockWindow(height, size uint32) (interfaces.IHash, error) 
 		// Only one DBlock in range, just return it's KeyMR
 		return dblockMRs[0], nil
 	}
-	branch := primitives.BuildMerkleBranchForEntryHash(dblockMRs, dblockMRs[0], true)
+	branch := primitives.BuildMerkleBranch(dblockMRs, 0, true)
 	merkleRoot := branch[len(branch) - 1].Top
 	return merkleRoot, nil
 }
