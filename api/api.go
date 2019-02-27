@@ -18,6 +18,8 @@ import (
 	"github.com/FactomProject/factomd/common/primitives"
 )
 
+var Build = "" //added at build time
+var Version = ""
 var server string = "localhost:8088" //Localhost
 //var server string = "52.17.183.121:8088" //TestNet
 //var server string = "52.18.72.212:8088" //MainNet
@@ -115,7 +117,7 @@ func GetMerkleRootOfDBlockWindow(height, size uint32) (interfaces.IHash, error) 
 		return dblockMRs[0], nil
 	}
 	branch := primitives.BuildMerkleBranch(dblockMRs, 0, true)
-	merkleRoot := branch[len(branch) - 1].Top
+	merkleRoot := branch[len(branch)-1].Top
 	return merkleRoot, nil
 }
 

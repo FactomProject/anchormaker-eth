@@ -1,0 +1,33 @@
+version: 2
+
+jobs:
+
+  build:
+    working_directory: /go/src/github.com/FactomProject/anchormaker-eth
+    docker:
+      - image: circleci/golang:1.10
+
+    steps:
+      - checkout
+
+      - run:
+          name: Get dep
+          command: |
+            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run:
+          name: Get the dependencies
+          command: |
+            dep ensure
+      - run:
+          name: Build and install the executable
+          command: ./build.sh
+
+
+workflows:
+  version: 2
+  commit-workflow:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*/

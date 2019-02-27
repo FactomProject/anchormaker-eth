@@ -1,0 +1,43 @@
+version: '2'
+services:
+  factomd:
+    container_name: factomd
+    image: factominc/factomd:alpine-develop
+    expose:
+      - "8090"
+      - "8088"
+    ports:
+      - 8090:8090
+      - 8088:8088
+    entrypoint:
+      - /go/bin/factomd
+      - --network=LOCAL
+      - --blktime=30
+      - --net=alot+
+      - --enablenet=true
+      - --count=2
+      - --startdelay=1
+      - --checkheads=false
+      - --controlpanelsetting=readwrite
+  anchormaker:
+    container_name: anchormaker
+    image: factominc/anchormaker:develop
+    build:
+      context: ./
+    expose:
+      - "8078"
+    ports:
+      - 8078:8078
+    depends_on:
+      - factomd
+  geth:
+    container_name: geth
+    image: factominc/anchormaker-geth:develop
+    build:
+      context: ./ethereum
+    entrypoint:
+      - geth
+      - --verbosity 3
+      - --testnet
+      - --rpc
+      - --rpcapi "personal"

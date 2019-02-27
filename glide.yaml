@@ -19,3 +19,6 @@ import:
   - database/hybridDB
   - database/mapdb
 - package: gopkg.in/gcfg.v1
+- package: github.com/prometheus/client_golang
+  subpackages:
+  - prometheus
