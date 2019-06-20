@@ -17,42 +17,12 @@ import (
 func Setup(c *config.AnchorConfig) error {
 	fmt.Println("Setting the server up...")
 
-	err := CheckAndTopupBalances(c.Factom.ECBalanceThreshold, c.Factom.FactoidBalanceThreshold, c.Factom.ECBalanceThreshold/10)
-	if err != nil {
-		return err
-	}
-
-	err = CheckAndCreateEthereumAnchorChain()
+	err := CheckAndCreateEthereumAnchorChain()
 	if err != nil {
 		return err
 	}
 
 	fmt.Printf("Setup complete!\n")
-	return nil
-}
-
-// CheckAndTopupBalances checks current FCT/EC balances against their thresholds, and buys more EC if necessary
-func CheckAndTopupBalances(ecBalanceThreshold, fBalanceThreshold, minimumECBalance int64) error {
-	fBalance, ecBalance, err := anchorFactom.CheckFactomBalance()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Balances - %v FCT, %v EC\n", fBalance, ecBalance)
-
-	if ecBalance < ecBalanceThreshold {
-		if fBalance < fBalanceThreshold {
-			if ecBalance < minimumECBalance {
-				return fmt.Errorf("EC and FCT Balances are too low, can't do anything!\n")
-			} else {
-				return nil
-			}
-		}
-		err = anchorFactom.TopupECAddress()
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 

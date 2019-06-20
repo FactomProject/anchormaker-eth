@@ -22,10 +22,8 @@ type AnchorConfig struct {
 		ServerPrivKey string
 	}
 	Factom struct {
-		FactomdAddress          string
-		WalletAddress           string
-		FactoidBalanceThreshold int64
-		ECBalanceThreshold      int64
+		FactomdAddress string
+		WalletAddress  string
 	}
 	Anchor struct {
 		ServerECKey         string
@@ -70,15 +68,9 @@ HomeDir								= ""
 DBType								= "Map"
 LdbPath								= "AnchormakerLDB"
 BoltPath							= "AnchormakerBolt.db"
-;ServerPrivKey						= ec9f1cefa00406b80d46135a53504f1f4182d4c0f3fed6cca9281bc020eff973
 ServerPrivKey						= 2d9afb9b073394863786d660b8960aa827a3d713e0a400e116d373874429276a
-; ServerPrivKey						= 75c67eb4637d8d0a7dba0ba8152bf1b96cba551f888878c7a5b7b8a34ac584e8f06f190d3307f52ff56e2ea6874250cb8ce0332dcc809b80100493b1ff064c59
-; ServerPrivKey						= 07c0d52cb74f4ca3106d80c4a70488426886bccc6ebc10c6bafb37bf8a65f4c38cee85c62a9e48039d4ac294da97943c2001be1539809ea5f54721f0c5477a0a
 [anchor]
-;ServerECKey							= ec9f1cefa00406b80d46135a53504f1f4182d4c0f3fed6cca9281bc020eff973
 ServerECKey							= 2d9afb9b073394863786d660b8960aa827a3d713e0a400e116d373874429276a
-; ServerECKey 						= 5c0eb59f5d311a1c80ba0302b53433457bdb9e271fc22f064e6981ac8965bc2f1f0a6c2bf854a0994562bf36606345aaa6a1dfee3073fb3276b878751238f762
-; ServerECKey						= 397c49e182caa97737c6b394591c614156fbe7998d7bf5d76273961e9fa1edd406ed9e69bfdf85db8aa69820f348d096985bc0b11cc9fc9dcee3b8c68b41dfd5
 AnchorSigPublicKey					= 0426a802617848d4d16d87830fc521f4d136bb2d0c352850919c2679f189613a
 ConfirmationsNeeded					= 20
 WindowSize                          = 1000
@@ -87,11 +79,8 @@ WindowSize                          = 1000
 ; Factom settings
 ; ------------------------------------------------------------------------------
 [factom]
-;FactomdAddress						= "qatest.factom.org:8088"
 FactomdAddress						= "localhost:8088"
 WalletAddress						= "localhost:8089"
-FactoidBalanceThreshold				= 100
-ECBalanceThreshold					= 10000
 
 ; ------------------------------------------------------------------------------
 ; Ethereum settings
@@ -141,7 +130,6 @@ FactomdServer                        = "localhost:8088"
 WalletServer                         = "localhost:8089"
 `
 
-//var acfg *AnchorConfig
 var once sync.Once
 var filename = getHomeDir() + "/.factom/anchormaker.conf"
 
@@ -155,18 +143,15 @@ func ReadConfig() *AnchorConfig {
 	once.Do(func() {
 		cfg = readAnchorConfig()
 	})
-	//debug.PrintStack()
 	return cfg
 }
 
 func ReReadConfig() *AnchorConfig {
-	cfg = readAnchorConfig()
-
-	return cfg
+	return readAnchorConfig()
 }
 
 func readAnchorConfig() *AnchorConfig {
-	if len(os.Args) > 1 { //&& strings.Contains(strings.ToLower(os.Args[1]), "anchormaker.conf") {
+	if len(os.Args) > 1 {
 		filename = os.Args[1]
 	}
 	if strings.HasPrefix(filename, "~") {
