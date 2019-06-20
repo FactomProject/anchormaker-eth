@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/FactomProject/factom"
-
 	"github.com/FactomProject/anchormaker-eth/config"
 	anchorFactom "github.com/FactomProject/anchormaker-eth/factom"
-
+	"github.com/FactomProject/factom"
 	"github.com/FactomProject/factomd/common/entryBlock"
 	"github.com/FactomProject/factomd/common/primitives"
 )

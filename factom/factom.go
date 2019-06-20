@@ -17,7 +17,6 @@ import (
 var IgnoreWrongEntries = true
 var WindowSize uint32
 var AnchorSigPublicKeys []interfaces.Verifier
-var ServerECKey *primitives.PrivateKey
 var ServerPrivKey *primitives.PrivateKey
 var ECAddress *factom.ECAddress
 
@@ -32,9 +31,14 @@ func init() {
 }
 
 func LoadConfig(c *config.AnchorConfig) {
-	WindowSize = c.Anchor.WindowSize
+	ecAddress, err := factom.GetECAddress(c.App.ECPrivateKey)
+	if err != nil {
+		panic(err)
+	}
+	ECAddress = ecAddress
 
-	for _, v := range c.Anchor.AnchorSigPublicKey {
+	// All previously used Anchor Record keys for validation
+	for _, v := range c.App.AllAnchorRecordPublicKeys {
 		pubKey := new(primitives.PublicKey)
 		err := pubKey.UnmarshalText([]byte(v))
 		if err != nil {
@@ -43,24 +47,15 @@ func LoadConfig(c *config.AnchorConfig) {
 		AnchorSigPublicKeys = append(AnchorSigPublicKeys, pubKey)
 	}
 
-	key, err := primitives.NewPrivateKeyFromHex(c.Anchor.ServerECKey)
-	if err != nil {
-		panic(err)
-	}
-	ServerECKey = key
-
-	ecAddress, err := factom.MakeECAddress(key.Key[:32])
-	if err != nil {
-		panic(err)
-	}
-	ECAddress = ecAddress
-
-	key, err = primitives.NewPrivateKeyFromHex(c.App.ServerPrivKey)
+	// Current private key we'll use to sign Anchor Records
+	key, err := primitives.NewPrivateKeyFromHex(c.App.CurrentAnchorRecordPrivateKey)
 	if err != nil {
 		panic(err)
 	}
 	ServerPrivKey = key
 	AnchorSigPublicKeys = append(AnchorSigPublicKeys, ServerPrivKey.Pub)
+
+	WindowSize = c.App.WindowSize
 }
 
 // SynchronizeFactomData checks for recently created directory blocks and returns how many new ones were found
@@ -82,7 +77,7 @@ func SynchronizeFactomData(dbo *database.AnchorDatabaseOverlay) (int, error) {
 		nextHeight++
 	}
 
-	dBlockList := []interfaces.IDirectoryBlock{}
+	var dBlockList []interfaces.IDirectoryBlock
 	for {
 		dBlock, err := api.GetDBlockByHeight(nextHeight)
 		if err != nil {
@@ -145,10 +140,9 @@ func SynchronizeFactomData(dbo *database.AnchorDatabaseOverlay) (int, error) {
 						fmt.Printf("%v, %v\n", ar.DBHeightMax, anchorData)
 						panic(fmt.Sprintf("%v vs %v", anchorData.MerkleRoot, ar.WindowMR))
 						return 0, fmt.Errorf("AnchorData MerkleRoot does not match AnchorRecord MerkleRoot")
-					} else {
-						fmt.Printf("Bad AR: Height %v has MerkleRoot %v in database, but found %v in AnchorRecord on Factom\n", ar.DBHeightMax, anchorData.MerkleRoot, ar.WindowMR)
-						continue
 					}
+					fmt.Printf("Bad AR: Height %v has MerkleRoot %v in database, but found %v in AnchorRecord on Factom\n", ar.DBHeightMax, anchorData.MerkleRoot, ar.WindowMR)
+					continue
 				}
 
 				if ar.Ethereum != nil {
@@ -209,9 +203,12 @@ func SynchronizeFactomData(dbo *database.AnchorDatabaseOverlay) (int, error) {
 func SaveAnchorsIntoFactom(dbo *database.AnchorDatabaseOverlay) error {
 	fmt.Println("\nSaveAnchorsIntoFactom():")
 
-	ecBalance, err := api.GetECBalance(ServerECKey.PublicKeyString())
+	ecBalance, err := factom.GetECBalance(ECAddress.PubString())
 	if err != nil {
 		fmt.Println(err.Error())
+	} else if ecBalance == 0 {
+		fmt.Printf("EC Balance: 0\nCannot submit anchors. Returning.")
+		return nil
 	} else {
 		fmt.Printf("EC Balance: %d\n", ecBalance)
 	}

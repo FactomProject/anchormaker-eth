@@ -19,7 +19,7 @@ func main() {
 
 	ethereum.LoadConfig(c)
 	factom.LoadConfig(c)
-	api.SetServer(c.Factom.FactomdAddress)
+	api.SetServer(c.App.FactomdNodeURL)
 
 	err := setup.Setup(c)
 	if err != nil {

@@ -37,11 +37,11 @@ var conn *ethclient.Client
 var factomAnchor *FactomAnchor
 
 func LoadConfig(c *config.AnchorConfig) {
-	WindowSize = c.Anchor.WindowSize
+	WindowSize = c.App.WindowSize
 	WalletAddress = strings.ToLower(c.Ethereum.WalletAddress)
 	WalletPassword = c.Ethereum.WalletPassword
 	ContractAddress = strings.ToLower(c.Ethereum.ContractAddress)
-	EthGasStationAddress = c.Ethereum.EthGasStationAddress
+	EthGasStationAddress = c.Ethereum.EthGasStationURL
 	IgnoreWrongEntries = c.Ethereum.IgnoreWrongEntries
 
 	var err error
