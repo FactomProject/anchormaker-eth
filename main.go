@@ -19,7 +19,7 @@ func main() {
 
 	ethereum.LoadConfig(c)
 	factom.LoadConfig(c)
-	api.SetServer(c.Factom.FactomdAddress)
+	api.SetServer(c.App.FactomdNodeURL)
 
 	err := setup.Setup(c)
 	if err != nil {
@@ -52,6 +52,7 @@ func main() {
 
 	go interruptLoop()
 
+	// TODO: eliminate loops and locking, make the app reactive instead with channels
 	for {
 		// ensuring safe interruption
 		select {
@@ -131,12 +132,7 @@ func AnchorLoop(dbo *database.AnchorDatabaseOverlay, c *config.AnchorConfig) err
 	fmt.Println("--------------------------------------------------------------------------------")
 	fmt.Println("AnchorLoop():")
 
-	err := setup.CheckAndTopupBalances(c.Factom.ECBalanceThreshold, c.Factom.FactoidBalanceThreshold, 100)
-	if err != nil {
-		return err
-	}
-
-	err = ethereum.AnchorBlocksIntoEthereum(dbo)
+	err := ethereum.AnchorBlocksIntoEthereum(dbo)
 	if err != nil {
 		return err
 	}

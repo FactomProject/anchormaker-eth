@@ -8,11 +8,8 @@ import (
 	"github.com/FactomProject/anchormaker-eth/config"
 	"github.com/FactomProject/anchormaker-eth/database"
 	"github.com/FactomProject/factom"
-	"github.com/FactomProject/factom/wallet"
-	"github.com/FactomProject/factom/wallet/wsapi"
 	"github.com/FactomProject/factomd/anchor"
 	"github.com/FactomProject/factomd/common/entryBlock"
-	"github.com/FactomProject/factomd/common/factoid"
 	"github.com/FactomProject/factomd/common/interfaces"
 	"github.com/FactomProject/factomd/common/primitives"
 )
@@ -20,11 +17,8 @@ import (
 var IgnoreWrongEntries = true
 var WindowSize uint32
 var AnchorSigPublicKeys []interfaces.Verifier
-var ServerECKey *primitives.PrivateKey
 var ServerPrivKey *primitives.PrivateKey
 var ECAddress *factom.ECAddress
-var FactoidBalanceThreshold int64
-var ECBalanceThreshold int64
 
 // 6e4540d08d5ac6a1a394e982fb6a2ab8b516ee751c37420055141b94fe070bfe
 var EthereumAnchorChainID interfaces.IHash
@@ -37,9 +31,14 @@ func init() {
 }
 
 func LoadConfig(c *config.AnchorConfig) {
-	WindowSize = c.Anchor.WindowSize
+	ecAddress, err := factom.GetECAddress(c.App.ECPrivateKey)
+	if err != nil {
+		panic(err)
+	}
+	ECAddress = ecAddress
 
-	for _, v := range c.Anchor.AnchorSigPublicKey {
+	// All previously used Anchor Record keys for validation
+	for _, v := range c.App.AllAnchorRecordPublicKeys {
 		pubKey := new(primitives.PublicKey)
 		err := pubKey.UnmarshalText([]byte(v))
 		if err != nil {
@@ -48,27 +47,15 @@ func LoadConfig(c *config.AnchorConfig) {
 		AnchorSigPublicKeys = append(AnchorSigPublicKeys, pubKey)
 	}
 
-	key, err := primitives.NewPrivateKeyFromHex(c.Anchor.ServerECKey)
-	if err != nil {
-		panic(err)
-	}
-	ServerECKey = key
-
-	ecAddress, err := factom.MakeECAddress(key.Key[:32])
-	if err != nil {
-		panic(err)
-	}
-	ECAddress = ecAddress
-
-	key, err = primitives.NewPrivateKeyFromHex(c.App.ServerPrivKey)
+	// Current private key we'll use to sign Anchor Records
+	key, err := primitives.NewPrivateKeyFromHex(c.App.CurrentAnchorRecordPrivateKey)
 	if err != nil {
 		panic(err)
 	}
 	ServerPrivKey = key
 	AnchorSigPublicKeys = append(AnchorSigPublicKeys, ServerPrivKey.Pub)
 
-	FactoidBalanceThreshold = c.Factom.FactoidBalanceThreshold
-	ECBalanceThreshold = c.Factom.ECBalanceThreshold
+	WindowSize = c.App.WindowSize
 }
 
 // SynchronizeFactomData checks for recently created directory blocks and returns how many new ones were found
@@ -90,7 +77,7 @@ func SynchronizeFactomData(dbo *database.AnchorDatabaseOverlay) (int, error) {
 		nextHeight++
 	}
 
-	dBlockList := []interfaces.IDirectoryBlock{}
+	var dBlockList []interfaces.IDirectoryBlock
 	for {
 		dBlock, err := api.GetDBlockByHeight(nextHeight)
 		if err != nil {
@@ -153,10 +140,9 @@ func SynchronizeFactomData(dbo *database.AnchorDatabaseOverlay) (int, error) {
 						fmt.Printf("%v, %v\n", ar.DBHeightMax, anchorData)
 						panic(fmt.Sprintf("%v vs %v", anchorData.MerkleRoot, ar.WindowMR))
 						return 0, fmt.Errorf("AnchorData MerkleRoot does not match AnchorRecord MerkleRoot")
-					} else {
-						fmt.Printf("Bad AR: Height %v has MerkleRoot %v in database, but found %v in AnchorRecord on Factom\n", ar.DBHeightMax, anchorData.MerkleRoot, ar.WindowMR)
-						continue
 					}
+					fmt.Printf("Bad AR: Height %v has MerkleRoot %v in database, but found %v in AnchorRecord on Factom\n", ar.DBHeightMax, anchorData.MerkleRoot, ar.WindowMR)
+					continue
 				}
 
 				if ar.Ethereum != nil {
@@ -216,6 +202,17 @@ func SynchronizeFactomData(dbo *database.AnchorDatabaseOverlay) (int, error) {
 // SaveAnchorsIntoFactom submits Factom entries (anchor records) for all newly confirmed contract txs found during the SynchronizationLoop
 func SaveAnchorsIntoFactom(dbo *database.AnchorDatabaseOverlay) error {
 	fmt.Println("\nSaveAnchorsIntoFactom():")
+
+	ecBalance, err := factom.GetECBalance(ECAddress.PubString())
+	if err != nil {
+		fmt.Println(err.Error())
+	} else if ecBalance == 0 {
+		fmt.Printf("EC Balance: 0\nCannot submit anchors. Returning.")
+		return nil
+	} else {
+		fmt.Printf("EC Balance: %d\n", ecBalance)
+	}
+
 	ps, err := dbo.FetchProgramState()
 	if err != nil {
 		return err
@@ -373,99 +370,6 @@ func JustFactomize(entry *entryBlock.Entry) (string, string, error) {
 		return "", "", fmt.Errorf("entry reveal error: %v", err)
 	}
 	return tx1, tx2, nil
-}
-
-// CheckFactomBalance returns the current factoid and entry credit balances of the addresses specified in the config file
-func CheckFactomBalance() (int64, int64, error) {
-	ecBalance, err := api.GetECBalance(ServerECKey.PublicKeyString())
-	if err != nil {
-		return 0, 0, err
-	}
-
-	fBalance, err := api.GetFactoidBalance(ServerPrivKey.PublicKeyString())
-	if err != nil {
-		return 0, 0, err
-	}
-	return fBalance, ecBalance, nil
-}
-
-// TopupECAddress buys the amount of entry credits specified in the config file's ECBalanceThreshold
-func TopupECAddress() error {
-	fmt.Println("TopupECAddress():")
-	w, err := wallet.NewMapDBWallet()
-	if err != nil {
-		return err
-	}
-	defer w.Close()
-	priv, err := primitives.PrivateKeyStringToHumanReadableFactoidPrivateKey(ServerPrivKey.PrivateKeyString())
-	if err != nil {
-		return err
-	}
-	fa, err := factom.GetFactoidAddress(priv)
-	err = w.InsertFCTAddress(fa)
-	if err != nil {
-		return err
-	}
-
-	fAddress, err := factoid.PublicKeyStringToFactoidAddressString(ServerPrivKey.PublicKeyString())
-	if err != nil {
-		return err
-	}
-	wsapiIP := fmt.Sprintf("localhost:%d", 8089)
-	go wsapi.Start(w, wsapiIP, config.ReadConfig().Walletd)
-	defer func() {
-		time.Sleep(10 * time.Millisecond)
-		wsapi.Stop()
-	}()
-	factom.SetWalletServer(wsapiIP)
-
-	ecAddress, err := factoid.PublicKeyStringToECAddressString(ServerECKey.PublicKeyString())
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("TopupECAddress - %v, %v\n", fAddress, ecAddress)
-
-	tx, err := factom.BuyExactEC(fAddress, ecAddress, uint64(ECBalanceThreshold), true)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Topup tx - %v\n", tx)
-
-	for i := 0; ; i = (i + 1) % 3 {
-		time.Sleep(5 * time.Second)
-		ack, err := factom.FactoidACK(tx.TxID, "")
-		if err != nil {
-			return err
-		}
-
-		str, err := primitives.EncodeJSONString(ack)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Topup ack - %v", str)
-		for j := 0; j < i+1; j++ {
-			fmt.Printf(".")
-		}
-		fmt.Printf("  \r")
-
-		if ack.Status != "DBlockConfirmed" {
-			continue
-		}
-		fmt.Printf("Topup ack - %v\n", str)
-		break
-	}
-
-	_, ecBalance, err := CheckFactomBalance()
-	if err != nil {
-		return err
-	}
-	if ecBalance < ECBalanceThreshold {
-		return fmt.Errorf("entry credit balance was not increased")
-	}
-
-	return nil
 }
 
 // CreateFirstEthereumAnchorEntry creates and returns the first entry in the Ethereum Anchor Chain
