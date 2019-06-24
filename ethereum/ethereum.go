@@ -31,7 +31,7 @@ var ContractAddress string
 var GasLimit uint64
 var EthGasStationAddress string
 var IgnoreWrongEntries bool
-var justConnectedToNet = true
+var justConnectedToNet = false
 
 var conn *ethclient.Client
 var factomAnchor *FactomAnchor
