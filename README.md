@@ -39,6 +39,11 @@ Next, let's get geth fully synced. Open up a tmux session and navigate to the an
 
 Geth will run with `--syncmode "fast"` by default, which is essentially the concept of a "full" node in Ethereum. It will quickly sync the block headers up to 64 blocks before current head block, then begin processing all transactions and building up the state. This can still take a **really long** time, despite the name "fast". So for testing purposes, just running a light node will be sufficient. This will allow your node to sync very quickly and have little overhead. Simply add the following flag: `--syncmode "light"`
 
+If running a light node, you may run into issues where `net.peerCount` is 0. This is a fairly common problem with geth light nodes -- by design, it seems they don't reach out for many peers. To add a default list of peers, run the following in the geth console:
+```javascript
+loadScript('addPeers.js')
+```
+
 To check if your geth node is syncing, issue `eth.syncing` from within the geth console. A response of `false` means your node is fully synced and you are safe to proceed.
 
 Once fully synced, create an Ethereum address and put it in the anchormaker.conf file along with the password you used for it. Also, you'll want to change the `WalletKeyPath` field to be either the proper keystore filepath for your system. It'll be a file in the `/home/USER/.ethereum/testnet/keystore/...` directory.
